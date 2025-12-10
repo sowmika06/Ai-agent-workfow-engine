@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow WebSocket Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background-color: #2d2d30;
+            border: 1px solid #3e3e42;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .logs {
+            height: 400px;
+            overflow-y: auto;
+            background-color: #1e1e1e;
+            border: 1px solid #3e3e42;
+            padding: 10px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        .log-running { color: #4fc3f7; }
+        .log-completed { color: #81c784; }
+        .log-failed { color: #e57373; }
+        .log-info { color: #ffb74d; }
+        
+        button {
+            background-color: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #005a9e;
+        }
+        button:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            background-color: #1e1e1e;
+            border: 1px solid #3e3e42;
+            color: #d4d4d4;
+            border-radius: 4px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status-connected { background-color: #2e7d32; }
+        .status-disconnected { background-color: #d32f2f; }
+        .status-waiting { background-color: #f57c00; }
+        
+        h1, h2 {
+            color: #569cd6;
+        }
+    </style>
+</head>
+<body>
+    <h1>🌐 Workflow WebSocket Test</h1>
+    <p><strong>Assignment:</strong> "A WebSocket endpoint to stream logs step-by-step"</p>
+    
+    <div class="container">
+        <div class="panel">
+            <h2>🚀 Start Workflow</h2>
+            <textarea id="codeInput" rows="10" placeholder="Enter Python code to analyze...">
+def fibonacci(n):
+    '''Calculate fibonacci number'''
+    if n <= 1:
+        return n
+    else:
+        return fibonacci(n-1) + fibonacci(n-2)
+
+def factorial(n):
+    '''Calculate factorial'''  
+    if n <= 1:
+        return 1
+    else:
+        return n * factorial(n-1)
+            </textarea>
+            <button onclick="startWorkflow()">Start Code Review Workflow</button>
+            <button onclick="connectWebSocket()" id="connectBtn">Connect WebSocket</button>
+            <button onclick="disconnectWebSocket()" id="disconnectBtn" disabled>Disconnect</button>
+            
+            <div id="status" class="status status-disconnected">
+                ❌ Not connected
+            </div>
+            
+            <div>
+                <strong>Run ID:</strong> <span id="runId">-</span><br>
+                <strong>Graph ID:</strong> <span id="graphId">-</span>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>📡 Real-time Logs</h2>
+            <div id="logs" class="logs">
+                <div class="log-entry log-info">Waiting for connection...</div>
+            </div>
+            <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+    </div>
+
+    <script>
+        let websocket = null;
+        let currentRunId = null;
+        let currentGraphId = null;
+
+        function addLog(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logs.appendChild(entry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function updateStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status status-${type}`;
+        }
+
+        async function startWorkflow() {
+            const code = document.getElementById('codeInput').value;
+            
+            try {
+                addLog('🚀 Creating workflow graph...', 'info');
+                
+                // Create graph
+                const createResponse = await fetch('/api/v1/graph/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: 'websocket_test_workflow',
+                        nodes: [
+                            { name: 'extract', function_name: 'extract_functions' },
+                            { name: 'analyze', function_name: 'check_complexity' },
+                            { name: 'report', function_name: 'calculate_quality_score' }
+                        ],
+                        edges: { extract: 'analyze', analyze: 'report' },
+                        start_node: 'extract'
+                    })
+                });
+                
+                const createResult = await createResponse.json();
+                currentGraphId = createResult.graph_id;
+                document.getElementById('graphId').textContent = currentGraphId;
+                addLog(`📊 Created graph: ${currentGraphId}`, 'completed');
+                
+                // Start workflow
+                addLog('🏃 Starting workflow execution...', 'info');
+                const runResponse = await fetch('/api/v1/graph/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        graph_id: currentGraphId,
+                        initial_state: { code: code }
+                    })
+                });
+                
+                const runResult = await runResponse.json();
+                currentRunId = runResult.run_id;
+                document.getElementById('runId').textContent = currentRunId;
+                addLog(`🏃 Started workflow: ${currentRunId}`, 'completed');
+                
+                // Auto-connect WebSocket if not connected
+                if (!websocket) {
+                    connectWebSocket();
+                }
+                
+            } catch (error) {
+                addLog(`❌ Error starting workflow: ${error.message}`, 'failed');
+            }
+        }
+
+        function connectWebSocket() {
+            if (!currentRunId) {
+                addLog('❌ No run ID available. Start a workflow first.', 'failed');
+                return;
+            }
+            
+            const wsUrl = `ws://localhost:8000/api/v1/ws/workflow/${currentRunId}`;
+            addLog(`🔌 Connecting to: ${wsUrl}`, 'info');
+            
+            websocket = new WebSocket(wsUrl);
+            
+            websocket.onopen = function(event) {
+                addLog('✅ WebSocket connected!', 'completed');
+                updateStatus('✅ Connected', 'connected');
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = false;
+            };
+            
+            websocket.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                switch (data.type) {
+                    case 'connected':
+                        addLog(`🎯 ${data.message}`, 'info');
+                        break;
+                        
+                    case 'log':
+                        const timestamp = new Date(data.timestamp).toLocaleTimeString();
+                        const statusEmoji = {
+                            running: '🔄',
+                            completed: '✅',
+                            failed: '❌'
+                        }[data.status] || '📝';
+                        
+                        addLog(`${statusEmoji} [${timestamp}] ${data.node_name}: ${data.message}`, data.status);
+                        
+                        // Show quality score if available
+                        if (data.state_snapshot && data.state_snapshot.quality_score !== undefined) {
+                            addLog(`   📊 Quality Score: ${data.state_snapshot.quality_score}`, 'info');
+                        }
+                        break;
+                        
+                    case 'status':
+                        addLog(`📋 Workflow Status: ${data.status}`, 'info');
+                        if (data.status === 'completed') {
+                            addLog('🎉 Workflow completed!', 'completed');
+                        }
+                        break;
+                        
+                    case 'waiting':
+                        addLog(`⏳ ${data.message}`, 'info');
+                        updateStatus('⏳ Waiting for workflow', 'waiting');
+                        break;
+                        
+                    case 'error':
+                        addLog(`❌ ${data.message}`, 'failed');
+                        break;
+                        
+                    case 'pong':
+                        // Heartbeat response
+                        break;
+                }
+            };
+            
+            websocket.onclose = function(event) {
+                addLog('🔌 WebSocket disconnected', 'info');
+                updateStatus('❌ Disconnected', 'disconnected');
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('disconnectBtn').disabled = true;
+                websocket = null;
+            };
+            
+            websocket.onerror = function(error) {
+                addLog(`❌ WebSocket error: ${error}`, 'failed');
+                updateStatus('❌ Connection error', 'disconnected');
+            };
+            
+            // Send periodic ping
+            setInterval(() => {
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    websocket.send(JSON.stringify({ type: 'ping' }));
+                }
+            }, 30000);
+        }
+
+        function disconnectWebSocket() {
+            if (websocket) {
+                websocket.close();
+            }
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        // Auto-connect on page load if we have a run ID
+        window.onload = function() {
+            addLog('🌐 WebSocket Test Client Ready', 'info');
+            addLog('📋 Assignment: "A WebSocket endpoint to stream logs step-by-step"', 'info');
+        };
+    </script>
+</body>
+</html>
