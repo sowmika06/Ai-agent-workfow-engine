@@ -1,4 +1,4 @@
-from app.core.models import GraphDefinition, NodeDefinition
+from app.engine.models import GraphDefinition, NodeDefinition
 
 
 def create_code_review_workflow() -> GraphDefinition:

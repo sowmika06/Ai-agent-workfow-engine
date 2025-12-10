@@ -4,10 +4,10 @@ from pydantic import BaseModel
 import json
 import asyncio
 
-from app.core.engine import WorkflowEngine
-from app.core.models import GraphDefinition, WorkflowState
+from app.engine.engine import WorkflowEngine
+from app.engine.models import GraphDefinition, WorkflowState
 from app.tools.registry import ToolRegistry
-from app.workflows.code_review import create_code_review_workflow, SAMPLE_CODE
+from app.agent_workflow.code_review import create_code_review_workflow, SAMPLE_CODE
 
 router = APIRouter()
 
