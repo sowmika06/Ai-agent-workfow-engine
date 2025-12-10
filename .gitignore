@@ -35,8 +35,6 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Assignment files (keep for reference)
-# Coding Assignment AI Engineering.pdf
 
 # Logs
 *.log
@@ -49,6 +47,3 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
-
-# Assignment files (keep for reference)
-# Coding Assignment AI Engineering.pdf
